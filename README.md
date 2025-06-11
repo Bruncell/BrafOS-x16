@@ -7,7 +7,7 @@
 
 
 
-<h3>🔨️ Build and run:
+<h4>🔨️ Build and run:
 <h6>
   
 make clean
