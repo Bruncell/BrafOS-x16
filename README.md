@@ -1,4 +1,6 @@
-<h1>My own 16x operating system
+<1h>BrafOS
+
+<h2>💿️ My own 16x operating system
 
 
 <h3>🔨️ Build and run:
