@@ -1,7 +1,7 @@
 My own 16x operating system
 
 ----------------------------------------------
-<h6>Build and run:<\h6>
+<h2>Build and run:
 
 make clean
 
