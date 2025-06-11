@@ -10,7 +10,7 @@ int 0x10
 
 mov cl, 0x0C
 mov si, ART
-call print_string_color
+call print_string
 
 jmp $
 
