@@ -1,4 +1,4 @@
-<1h>BrafOS
+<h1>BrafOS
 
 <h2>💿️ My own 16x operating system
 
