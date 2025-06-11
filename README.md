@@ -1,7 +1,7 @@
 My own 16x operating system
 
 ----------------------------------------------
-#Build and run:
+Build and run:
 
 make clean
 
