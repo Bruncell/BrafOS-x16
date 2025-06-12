@@ -16,6 +16,7 @@ call print_string
 pusha
 call clear_main_panel
 popa
+call clear_bottom_panel
 
 main_loop:
 
@@ -27,16 +28,8 @@ mov si, input_buffer
 ;- - - - - - - - INPUT LOOP - - - - - - - -
 read_input_loop:
 
-call clear_bottom_panel
 
-call get_time
 
-pusha
- mov di, 3840  
- mov si, time_buffer
- mov cl, 0x1E
-call print_video_memory
-popa
 
 mov ah, 00h
 int 0x16
@@ -61,7 +54,7 @@ jae clear_input_buffer
 
 
 jmp read_input_loop
-
+;----------------------------------------Done input loop
 done_input_loop:
 
 
@@ -70,7 +63,24 @@ call compear_strings
 cmp al, 1
 je help_
 
+mov di, time_command
+call compear_strings
+cmp al, 1
+je update_time_
+
+mov di, clear_command
+call compear_strings
+cmp al, 1
+je clear_main_panel_
+
+mov di, reboot_command
+call compear_strings
+cmp al, 1
+je reboot_
+
 jmp clear_input_buffer
+
+
 
 ;backspace - - - - - - - - - - - - - - - - - - -
 backspace:
@@ -142,16 +152,10 @@ jmp .clear_loop
 .done_clear:
     jmp read_input_loop
 
-
-
-
-;- - - - - - - - - - - - - - - - - - - - - - -
-
-
 jmp main_loop
 
 
-;- - - - - - - - - - - - - - - - - - - - - - -
+;-----------------------------------------programs
 help_:
 pusha
 call clear_main_panel
@@ -164,18 +168,16 @@ mov cl, 0x1E
 call print_video_memory
 pop si
 
-;- - - - - - - - - - - - - - - - - - - - - - - - - - - - -Тут будет функция хелп
 call clear_input_buffer
 
+reboot_:
+    cli
+    mov al, 0xFE
+    out 0x64, al
+    hlt
+    jmp $
 
-
-
-
-
-
-
-;-----------------------------------------
-get_time:
+update_time_:
 pusha
 
 xor ah, ah
@@ -207,17 +209,39 @@ mov [time_buffer+7], al
 mov byte [time_buffer+8], 0
 
 popa
-ret
+call clear_bottom_panel
+pusha
+ mov di, 3840  
+ mov si, time_buffer
+ mov cl, 0x1E
+call print_video_memory
+popa
 
+
+jmp clear_input_buffer
 bcd_to_ascii:
     mov ah, al
-    and ah, 0F0h     ; только старшие 4 бита → десятки
+    and ah, 0F0h
     shr ah, 4
     or ah, '0'
 
-    and al, 0Fh      ; младшие 4 бита → единицы
+    and al, 0Fh
     or al, '0'
     ret
+
+clear_main_panel_:
+pusha
+call clear_main_panel
+popa
+
+jmp clear_input_buffer
+
+
+
+;-------------------------------------------------
+
+
+
 print_video_memory:
     pusha
     mov ax, 0xB800
@@ -326,6 +350,9 @@ times 510 - ($ - $$) db 0
 
 ;Commands
 help_command: db "help", 0
+clear_command: db "clear", 0
+reboot_command: db "reboot", 0
+time_command: db "time", 0
 
 
 ;----------
@@ -334,10 +361,10 @@ help_command: db "help", 0
 help_msg: 
 db 0Dh, 0Ah
 db 0Dh, 0Ah
-db "help messange 1", 0Dh, 0Ah
-db "help messange 2", 0Dh, 0Ah
-db "help messange 3", 0Dh, 0Ah
-db "help messange ...", 0Dh, 0Ah
+db "time - Update time", 0Dh, 0Ah
+db "echo str - Show your text(dont work)", 0Dh, 0Ah
+db "reboot - Reboot system", 0Dh, 0Ah
+db "clear - Clear main panel", 0Dh, 0Ah
 db 0
 
 
@@ -366,3 +393,4 @@ time_buffer db 32 dup(0)
 
 
 dw 0xAA55
+
