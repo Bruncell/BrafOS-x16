@@ -8,10 +8,14 @@ mov al, 0x03
 int 0x10
 
 mov si, ART
-call print_string_color
+call print_string
 
 mov si, username
 call print_string
+
+pusha
+call clear_main_panel
+popa
 
 main_loop:
 
@@ -25,7 +29,14 @@ read_input_loop:
 
 call clear_bottom_panel
 
-call print_bottom_panel
+call get_time
+
+pusha
+ mov di, 3840  
+ mov si, time_buffer
+ mov cl, 0x1E
+call print_video_memory
+popa
 
 mov ah, 00h
 int 0x16
@@ -142,12 +153,17 @@ jmp main_loop
 
 ;- - - - - - - - - - - - - - - - - - - - - - -
 help_:
+pusha
+call clear_main_panel
+popa
 
 push si
 mov si, help_msg
-call print_string
+mov di, 1920
+mov cl, 0x1E
+call print_video_memory
 pop si
-call cursor_return
+
 ;- - - - - - - - - - - - - - - - - - - - - - - - - - - - -Тут будет функция хелп
 call clear_input_buffer
 
@@ -159,10 +175,90 @@ call clear_input_buffer
 
 
 ;-----------------------------------------
+get_time:
+pusha
+
+xor ah, ah
+
+mov ah, 0x02
+int 0x1A
+
+;HOURS
+mov al, ch
+call bcd_to_ascii
+add al, 3
+mov [time_buffer], ah
+mov [time_buffer+1], al
+mov byte [time_buffer+2], ':'
+
+;MINUTES
+mov al, cl
+call bcd_to_ascii
+mov [time_buffer+3], ah
+mov [time_buffer+4], al
+mov byte [time_buffer+5], ':'
+
+;SECONDS
+mov al, dh
+call bcd_to_ascii
+mov [time_buffer+6], ah
+mov [time_buffer+7], al
+
+mov byte [time_buffer+8], 0
+
+popa
+ret
+
+bcd_to_ascii:
+    mov ah, al
+    and ah, 0F0h     ; только старшие 4 бита → десятки
+    shr ah, 4
+    or ah, '0'
+
+    and al, 0Fh      ; младшие 4 бита → единицы
+    or al, '0'
+    ret
+print_video_memory:
+    pusha
+    mov ax, 0xB800
+    mov es, ax
+        mov ah, cl
+    mov cx, 0
+
+.new_char:
+  add cx, 2
+    lodsb ;si++
+
+    cmp al, 0Ah
+    je .new_char
+
+  
+
+    cmp al, 0Dh
+    je .new_string
+
+    test al, al
+    jz .done
+
+    stosw ;di++
+    jmp .new_char
+
+.new_string:
+
+mov bx, 164
+sub bx, cx 
+
+add di, bx
+
+xor cx, cx
+jmp .new_char
+
+.done:
+    popa
+    ret
 
 
 print_bottom_panel:
-;потом надо переделать 
     pusha
     mov ax, 0xB800
     mov es, ax
@@ -179,21 +275,24 @@ print_bottom_panel:
     popa
     ret
 
-cursor_return:
-pusha
 
-sub si, input_buffer
-mov bx, si
+clear_main_panel:
+    pusha
+    mov ax, 0xB800
+    mov es, ax
+    mov di, 1920
+.new_char:
+    mov al, 32
 
-mov ah, 0x02
-mov bh, 0x00
-mov dh, 9
-mov dl, 7
-add dl, bl
-int 0x10
-popa
-ret
+cmp di, 3360
+je .done
 
+    mov ah, 0x1E 
+    stosw
+    jmp .new_char
+.done:
+    popa
+    ret
  
 clear_bottom_panel:
     pusha
@@ -206,20 +305,6 @@ clear_bottom_panel:
     mov ah, 0x1E
     stosw
     loop .clear_loop
-    popa
-    ret
-    
-print_string_color:
-    pusha
-.next_char:
-    lodsb
-    test al, al
-    jz .done
-    mov ah, 0x0E
-    mov bl, 0x0F
-    int 0x10
-    jmp .next_char
-.done:
     popa
     ret
 
@@ -249,35 +334,35 @@ help_command: db "help", 0
 help_msg: 
 db 0Dh, 0Ah
 db 0Dh, 0Ah
-db "- - - - help panel - - - - ", 0Dh, 0Ah
 db "help messange 1", 0Dh, 0Ah
 db "help messange 2", 0Dh, 0Ah
 db "help messange 3", 0Dh, 0Ah
 db "help messange ...", 0Dh, 0Ah
-db "- - - - - - - - - - - - - - ", 0
-
+db 0
 
 
 ;--------------
 
-username: db "user/: ", 0
-clear_bottom_panel_text: db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+username:
+db "user/: ", 0
+
+;clear_bottom_panel_text: db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
 ART:
 db 0Dh, 0Ah
-db "              ____                      ___", 0Dh, 0Ah
-db "             |  _ \\                   / _||", 0Dh, 0Ah
-db "             | ||) ||  _ ___   __ __  | ||_     ___   ___", 0Dh, 0Ah
-db "             |  _ <<  | '__|| / _` || |  _||   / _ \\/ __||", 0Dh, 0Ah
-db "             | ||) || | ||   | ((| || | ||    | (() |\__ \\", 0Dh, 0Ah
-db "             |____//  |_||    \__,_|| |_||     \___//|___//", 0Dh, 0Ah
-db 0Dh, 0Ah
-db "===============================================================================", 0Dh, 0Ah
+db " ######                    ###       #####    #####  |                         ", 0Dh, 0Ah
+db "  ##  ##                  ## ##     ##   ##  ##   ## |                         ", 0Dh, 0Ah
+db "  ##  ## ######  ####     #         ##   ##  #       |                         ", 0Dh, 0Ah
+db "  #####   ##  ##    ##  ####        ##   ##   #####  | something will be here..", 0Dh, 0Ah
+db "  ##  ##  ##     #####   ##         ##   ##       ## |                         ", 0Dh, 0Ah
+db "  ##  ##  ##    ##  ##   ##         ##   ##  ##   ## | Kernel: 16-bit          ", 0Dh, 0Ah
+db " ######  ####    #####  ####         #####    #####  | To see commands - help  ", 0Dh, 0Ah
+db "                                                     |                         ",0Dh, 0Ah
+db "                                                     |                         ", 0Dh, 0Ah
 db 0
 
 input_buffer db 16 dup(0)
+time_buffer db 32 dup(0)
 
 
 dw 0xAA55
-
-
