@@ -49,7 +49,7 @@ int 0x10
 
 mov ax, si
 sub ax, input_buffer
-cmp ax, 15
+cmp ax, 31
 jae clear_input_buffer
 
 
@@ -78,6 +78,11 @@ call compear_strings
 cmp al, 1
 je reboot_
 
+mov di, echo_prefix
+call compear_prefix
+cmp al, 1
+je echo_
+
 jmp clear_input_buffer
 
 
@@ -98,11 +103,40 @@ mov al, 0x08
 int 0x10
 jmp read_input_loop
 
+compear_prefix:
+push si
+mov si, input_buffer
+.new_char:
+mov al, [si]
+mov bl, [di]
+
+cmp bl, 0
+je .equal
+
+cmp al, 0
+je .not_equal
+
+cmp al, bl
+jne .not_equal
+
+inc si
+inc di
+jmp .new_char
+.equal:
+mov al, 1
+jmp .done
+
+.not_equal:
+mov al, 0
+jmp .done
+.done:
+pop si
+ret
 
 compear_strings:
 push si
 mov si, input_buffer
-new_char_compear_strings:
+.new_char:
 mov al, [si]
 mov bl, [di]
 cmp al, bl
@@ -112,7 +146,7 @@ cmp al, 0
 je strings_equal
 inc si
 inc di
-jmp new_char_compear_strings
+jmp .new_char
 
 strings_not_equal:
 xor al, al
@@ -156,10 +190,47 @@ jmp main_loop
 
 
 ;-----------------------------------------programs
-help_:
+echo_:
+
+push si
+mov si, input_buffer
+add si, 5
+cmp si, 0
+je .done_echo
+pop si
+
+
 pusha
-call clear_main_panel
+mov ax, 0xB800
+mov es, ax
+mov di, 1920
+mov ah, 0x1E
+
+.new_char:
+
+mov al, 32
+stosw ;di++
+cmp di, 1984
+jna .new_char
 popa
+    
+
+
+push si
+mov si, input_buffer
+add si, 5
+mov di, 1920
+mov cl, 0x1E
+call print_video_memory
+pop si
+
+.done_echo:
+
+
+call clear_input_buffer
+
+help_:
+
 
 push si
 mov si, help_msg
@@ -346,23 +417,26 @@ print_string:
     popa
     ret
 
-times 510 - ($ - $$) db 0
+;times 510 - ($ - $$) db 0
 
 ;Commands
 help_command: db "help", 0
 clear_command: db "clear", 0
 reboot_command: db "reboot", 0
 time_command: db "time", 0
+echo_prefix: db "echo ", 0
+
 
 
 ;----------
+
 
 ;msg
 help_msg: 
 db 0Dh, 0Ah
 db 0Dh, 0Ah
 db "time - Update time", 0Dh, 0Ah
-db "echo str - Show your text(dont work)", 0Dh, 0Ah
+db "echo str - Show your text", 0Dh, 0Ah
 db "reboot - Reboot system", 0Dh, 0Ah
 db "clear - Clear main panel", 0Dh, 0Ah
 db 0
@@ -388,9 +462,10 @@ db "                                                     |                      
 db "                                                     |                         ", 0Dh, 0Ah
 db 0
 
-input_buffer db 16 dup(0)
+input_buffer db 32 dup(0)
 time_buffer db 32 dup(0)
 
 
 dw 0xAA55
+
 
