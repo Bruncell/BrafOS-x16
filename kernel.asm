@@ -45,11 +45,21 @@ int 0x10
 
 mov ax, si
 sub ax, input_buffer
-cmp ax, 16
+cmp ax, 15
 jae clear_input_buffer
 
 
 jmp read_input_loop
+
+done_input_loop:
+
+
+mov di, help_command
+call compear_strings
+cmp al, 1
+je help_
+
+jmp clear_input_buffer
 
 ;backspace - - - - - - - - - - - - - - - - - - -
 backspace:
@@ -67,13 +77,45 @@ mov al, 0x08
 int 0x10
 jmp read_input_loop
 
-done_input_loop:
-jmp $
+
+compear_strings:
+push si
+mov si, input_buffer
+new_char_compear_strings:
+mov al, [si]
+mov bl, [di]
+cmp al, bl
+jne strings_not_equal
+
+cmp al, 0
+je strings_equal
+inc si
+inc di
+jmp new_char_compear_strings
+
+strings_not_equal:
+xor al, al
+pop si
+ret
+
+strings_equal:
+mov al, 1
+pop si
+ret
+
+
 
 ;clear input buffer - - - - - - - - - - - - - -
 clear_input_buffer:
+
+.clear_loop
+
 cmp si, input_buffer
-jbe done_clear_buffer
+jbe .done_clear
+
+dec si
+mov byte [si], 0
+
 
 mov al, 0x08
 mov ah, 0x0E
@@ -83,14 +125,12 @@ int 0x10
 mov al, 0x08
 int 0x10
 
-dec si
-mov byte [si], 0
 
 
+jmp .clear_loop
+.done_clear:
+    jmp read_input_loop
 
-jmp clear_input_buffer
-done_clear_buffer:
-jmp read_input_loop
 
 
 
@@ -99,7 +139,20 @@ jmp read_input_loop
 
 jmp main_loop
 
+
 ;- - - - - - - - - - - - - - - - - - - - - - -
+help_:
+
+;- - - - - - - - - - - - - - - - - - - - - - - - - - - - -Тут будет функция хелп
+
+call clear_input_buffer
+
+
+
+
+;-----------------------------------------
+
+
 print_bottom_panel:
 
     pusha
@@ -110,11 +163,11 @@ print_bottom_panel:
 new_char_bottom_panel:
     lodsb
     test al, al
-    jz .done
+    jz done_bottom_panel
     mov ah, 0x1E 
     stosw
     jmp new_char_bottom_panel
-.done:
+done_bottom_panel:
     popa
     ret
  
@@ -124,25 +177,25 @@ clear_bottom_panel:
     mov es, ax
     mov di, 3840
     mov cx, 80
-.clear_loop:
+clear_bottom_panel_loop:
     mov ax, 0x0720 
     mov ah, 0x1E
     stosw
-    loop .clear_loop
+    loop clear_bottom_panel_loop
     popa
     ret
 
 
 print_string:
     pusha
-.next_char:
+print_string_next_char:
     lodsb
     test al, al
-    jz .done
+    jz done_print_string
     mov ah, 0x0E
     int 0x10
-    jmp .next_char
-.done:
+    jmp print_string_next_char
+done_print_string:
     popa
     ret
 
@@ -153,6 +206,13 @@ help_command: db "help", 0
 
 
 ;----------
+
+;msg
+help_msg: db "qwertyu"
+
+
+
+;--------------
 
 username: db "user/: ", 0
 clear_bottom_panel_text: db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -173,4 +233,5 @@ input_buffer db 16 dup(0)
 
 
 dw 0xAA55
+
 
